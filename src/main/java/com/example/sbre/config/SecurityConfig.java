@@ -2,6 +2,7 @@ package com.example.sbre.config;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,19 +11,38 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.example.sbre.JWT.JwtFilter;
+import com.example.sbre.security.AuthEntryPoint;
+
 // 웹보안정책 때문에 Security 크로스 체크를 풀어줘야해서 만든 클래스
 @Configuration
 public class SecurityConfig {
+	
+	@Autowired
+	private AuthEntryPoint authEntryPoint;
+	
+	@Autowired
+	private JwtFilter jwtFilter;
 
 	// 시큐리티에도 ID주소를 크로스 체인해야함
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http.csrf(csrf -> csrf.disable())
-			.cors(cors -> cors.configurationSource(getSource()));
+			.cors(cors -> cors.configurationSource(getSource()))
+			.exceptionHandling(eh ->
+				eh.authenticationEntryPoint(authEntryPoint) // 예외발생시 내가만든 메서드로 해줘 
+			)
+			.authorizeHttpRequests(auth ->
+					auth.requestMatchers("/login", "/signup").permitAll()
+						.anyRequest().authenticated());
+		
+		// http.addFilterBefore( 추가할 필터, 작동하기전에 추가할필터 좀 먼저 작동시켜줘 )
+		http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 		
 		return http.build();
 	}
